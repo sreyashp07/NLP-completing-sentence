@@ -1,0 +1,54 @@
+intents:
+  refund_request:
+    label: "Refund Request"
+    department: "Billing Team"
+    priority: "high"
+    color: "#FF6B6B"
+
+  payment_issue:
+    label: "Payment Issue"
+    department: "Billing Team"
+    priority: "critical"
+    color: "#FF4444"
+
+  account_locked:
+    label: "Account Locked"
+    department: "Security Team"
+    priority: "critical"
+    color: "#FF0000"
+
+  technical_bug:
+    label: "Technical Bug"
+    department: "Engineering Team"
+    priority: "high"
+    color: "#FFA500"
+
+  feature_request:
+    label: "Feature Request"
+    department: "Product Team"
+    priority: "low"
+    color: "#4CAF50"
+
+  subscription_cancel:
+    label: "Subscription Cancel"
+    department: "Retention Team"
+    priority: "high"
+    color: "#FF6B6B"
+
+  invoice_problem:
+    label: "Invoice Problem"
+    department: "Finance Team"
+    priority: "medium"
+    color: "#FFD700"
+
+  shipping_delay:
+    label: "Shipping Delay"
+    department: "Logistics Team"
+    priority: "medium"
+    color: "#2196F3"
+
+  general_inquiry:
+    label: "General Inquiry"
+    department: "General Support"
+    priority: "low"
+    color: "#9E9E9E"
