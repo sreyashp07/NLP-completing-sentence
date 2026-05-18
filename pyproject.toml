@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "customer-intent"
+version = "1.0.0"
+description = "AI Customer Support Intent Classification & Smart Ticket Routing System"
+authors = ["sreyashp07"]
+readme = "README.md"
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
