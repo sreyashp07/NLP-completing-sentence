@@ -1,0 +1,10 @@
+class,precision,recall,f1-score,support
+account_locked,1.0,1.0,1.0,40
+feature_request,1.0,1.0,1.0,40
+general_inquiry,1.0,1.0,1.0,40
+invoice_problem,1.0,1.0,1.0,40
+payment_issue,1.0,1.0,1.0,40
+refund_request,1.0,1.0,1.0,40
+shipping_delay,1.0,1.0,1.0,40
+subscription_cancel,1.0,1.0,1.0,40
+technical_bug,1.0,1.0,1.0,40
