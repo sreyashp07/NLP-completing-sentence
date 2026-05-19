@@ -1,0 +1,8 @@
+accuracy: 1.0
+f1_macro: 1.0
+f1_weighted: 1.0
+model: TF-IDF + Logistic Regression
+num_classes: 9
+precision_weighted: 1.0
+recall_weighted: 1.0
+test_samples: 360
