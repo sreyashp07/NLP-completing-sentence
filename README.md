@@ -375,3 +375,32 @@ Sreyash P — https://github.com/sreyashp07
 ## License
 
 MIT License. See LICENSE file for details.
+## Running with Docker
+
+### Prerequisites
+- Docker Desktop installed and running
+
+### One-command start
+
+```bash
+# Train model first (required before Docker)
+py ml/training/train_baseline.py
+
+# Build and start all services
+docker-compose up --build
+```
+
+Services:
+- API: http://localhost:8000
+- UI:  http://localhost:8501
+- API Docs: http://localhost:8000/docs
+
+### Individual containers
+
+```bash
+# API only
+docker-compose up api
+
+# Stop everything
+docker-compose down
+```
