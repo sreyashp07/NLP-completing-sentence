@@ -1,0 +1,48 @@
+departments:
+  billing:
+    name: "Billing Team"
+    intents: ["payment_issue", "refund_request"]
+    sla_hours: 4
+    escalation_email: "billing@company.com"
+
+  security:
+    name: "Security Team"
+    intents: ["account_locked"]
+    sla_hours: 1
+    escalation_email: "security@company.com"
+
+  engineering:
+    name: "Engineering Team"
+    intents: ["technical_bug"]
+    sla_hours: 8
+    escalation_email: "engineering@company.com"
+
+  product:
+    name: "Product Team"
+    intents: ["feature_request"]
+    sla_hours: 72
+    escalation_email: "product@company.com"
+
+  retention:
+    name: "Retention Team"
+    intents: ["subscription_cancel"]
+    sla_hours: 2
+    escalation_email: "retention@company.com"
+
+  finance:
+    name: "Finance Team"
+    intents: ["invoice_problem"]
+    sla_hours: 24
+    escalation_email: "finance@company.com"
+
+  logistics:
+    name: "Logistics Team"
+    intents: ["shipping_delay"]
+    sla_hours: 12
+    escalation_email: "logistics@company.com"
+
+  general:
+    name: "General Support"
+    intents: ["general_inquiry"]
+    sla_hours: 48
+    escalation_email: "support@company.com"
