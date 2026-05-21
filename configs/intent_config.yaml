@@ -52,3 +52,9 @@ intents:
     department: "General Support"
     priority: "low"
     color: "#9E9E9E"
+
+# Routing rules
+routing:
+  auto_escalate_priority: ["critical"]
+  require_human_review_below_confidence: 0.6
+  max_auto_route_confidence: 0.95
