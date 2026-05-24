@@ -1,0 +1,33 @@
+priority_rules:
+  critical:
+    auto_escalate: true
+    notify_supervisor: true
+    max_response_minutes: 60
+    requires_human: true
+    sla_breach_alert: true
+
+  high:
+    auto_escalate: false
+    notify_supervisor: false
+    max_response_minutes: 240
+    requires_human: true
+    sla_breach_alert: true
+
+  medium:
+    auto_escalate: false
+    notify_supervisor: false
+    max_response_minutes: 1440
+    requires_human: false
+    sla_breach_alert: false
+
+  low:
+    auto_escalate: false
+    notify_supervisor: false
+    max_response_minutes: 4320
+    requires_human: false
+    sla_breach_alert: false
+
+escalation:
+  after_minutes_unresolved: 30
+  escalate_to: "supervisor"
+  send_notification: true
