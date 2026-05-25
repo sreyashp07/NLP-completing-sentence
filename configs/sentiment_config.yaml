@@ -1,0 +1,31 @@
+sentiment:
+  frustrated_threshold: 2
+  urgent_threshold: 1
+  exclamation_weight: 0.5
+  caps_ratio_weight: 3.0
+
+  routing_overrides:
+    frustrated_plus_critical: "immediate_escalation"
+    urgent_plus_high: "fast_track"
+    low_confidence: "human_review"
+
+  keywords:
+    critical:
+      - fraud
+      - scam
+      - hacked
+      - stolen
+      - lawsuit
+      - legal
+    urgent:
+      - urgent
+      - asap
+      - immediately
+      - emergency
+      - deadline
+    positive:
+      - thank
+      - thanks
+      - appreciate
+      - happy
+      - satisfied
