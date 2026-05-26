@@ -46,12 +46,25 @@ jobs:
       - name: Train baseline model
         run: python ml/training/train_baseline.py
 
-      - name: Run unit tests
+      - name: Run core unit tests
         run: |
           python -m pytest tests/unit/test_text_cleaner.py -v --tb=short
           python -m pytest tests/unit/test_schemas.py -v --tb=short
           python -m pytest tests/unit/test_helpers.py -v --tb=short
           python -m pytest tests/unit/test_predictor.py -v --tb=short
+          python -m pytest tests/unit/test_text_stats.py -v --tb=short
+          python -m pytest tests/unit/test_confidence.py -v --tb=short
+          python -m pytest tests/unit/test_constants.py -v --tb=short
+          python -m pytest tests/unit/test_data_validator.py -v --tb=short
+          python -m pytest tests/unit/test_normalizer.py -v --tb=short
+          python -m pytest tests/unit/test_sentiment.py -v --tb=short
+          python -m pytest tests/unit/test_priority_detector.py -v --tb=short
+          python -m pytest tests/unit/test_input_validator.py -v --tb=short
+          python -m pytest tests/unit/test_text_pipeline.py -v --tb=short
+          python -m pytest tests/unit/test_rate_limiter.py -v --tb=short
+          python -m pytest tests/unit/test_cache.py -v --tb=short
+          python -m pytest tests/unit/test_augmenter.py -v --tb=short
+          python -m pytest tests/unit/test_feature_flags.py -v --tb=short
 
       - name: Run evaluation
         run: python ml/evaluation/evaluator.py
