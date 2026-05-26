@@ -1,8 +1,4 @@
-"""
-NLP Preprocessing package.
-
-Exposes all preprocessing utilities for clean imports.
-"""
+"""NLP Preprocessing package."""
 from ml.preprocessing.text_cleaner import TextCleaner, extract_keywords
 from ml.preprocessing.text_normalizer import normalize_text, fix_misspellings
 from ml.preprocessing.sentiment_analyzer import analyze_sentiment

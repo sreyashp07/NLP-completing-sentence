@@ -3,17 +3,12 @@ Advanced routing engine for ticket assignment.
 
 Combines intent classification + sentiment analysis
 + confidence scoring to make smarter routing decisions.
-
-Routing priority:
-1. Critical intent + frustrated sentiment -> immediate escalation
-2. High intent + urgent -> fast track queue
-3. Low confidence -> human review queue
-4. Everything else -> standard routing
 """
 from typing import Dict
 from ml.preprocessing.sentiment_analyzer import analyze_sentiment
-from app.core.constants import PRIORITY_CRITICAL, PRIORITY_HIGH
 
+PRIORITY_CRITICAL = "critical"
+PRIORITY_HIGH = "high"
 
 ROUTING_QUEUES = {
     "immediate_escalation": {
@@ -76,7 +71,7 @@ def determine_queue(
 
     elif priority in [PRIORITY_CRITICAL, PRIORITY_HIGH] or sentiment["is_urgent"]:
         queue = "fast_track"
-        reason = f"High priority intent or urgent sentiment detected"
+        reason = "High priority intent or urgent sentiment detected"
 
     elif priority == "low" and not sentiment["is_urgent"]:
         queue = "low_priority"
