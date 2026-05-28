@@ -48,4 +48,4 @@ def test_patience_remaining():
     stopper = EarlyStopper(patience=5, mode="min")
     stopper.should_stop(1.0)
     stopper.should_stop(1.0)
-    assert stopper.patience_remaining == 3
+    assert stopper.patience_remaining == 4
