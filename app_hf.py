@@ -1,31 +1,29 @@
 """
-CustomerIntent AI — Hugging Face Spaces Deployment Version
-
-Standalone app that runs the ML model directly (no FastAPI backend needed).
-HF Spaces only runs one process, so we load the model inline.
+CustomerIntent AI - Hugging Face Spaces Version
+Trains model on startup if not present, then serves predictions.
 """
-import pickle
+import os
 import sys
+import pickle
+import subprocess
 import time
-import yaml
-import pandas as pd
-from datetime import datetime
 from pathlib import Path
+from datetime import datetime
 from typing import Dict, List, Optional
 
+# Download NLTK data first
 import nltk
-nltk.download('punkt', quiet=True)
-nltk.download('stopwords', quiet=True)
-nltk.download('wordnet', quiet=True)
-nltk.download('averaged_perceptron_tagger', quiet=True)
-nltk.download('punkt_tab', quiet=True)
+for resource in ['punkt', 'stopwords', 'wordnet', 'averaged_perceptron_tagger', 'punkt_tab']:
+    try:
+        nltk.download(resource, quiet=True)
+    except Exception:
+        pass
 
 import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ml.preprocessing.text_cleaner import TextCleaner, extract_keywords
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -36,11 +34,13 @@ st.set_page_config(
 )
 
 # ── Constants ──────────────────────────────────────────────────────────────────
+MODEL_DIR = Path("ml/saved_models/baseline")
+PIPELINE_PATH = MODEL_DIR / "pipeline.pkl"
+LE_PATH = MODEL_DIR / "label_encoder.pkl"
+
 PRIORITY_COLORS = {
-    "critical": "#FF2D55",
-    "high":     "#FF6B35",
-    "medium":   "#FFD700",
-    "low":      "#34C759",
+    "critical": "#FF2D55", "high": "#FF6B35",
+    "medium": "#FFD700", "low": "#34C759",
 }
 PRIORITY_EMOJI = {
     "critical": "🚨", "high": "🔴", "medium": "🟡", "low": "🟢"
@@ -77,38 +77,95 @@ EXAMPLE_MESSAGES = [
 # ── CSS ────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@300;400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&display=swap');
 html, body, .stApp { background-color: #080C14 !important; font-family: 'Sora', sans-serif; color: #E8EDF5; }
 [data-testid="stSidebar"] { background: linear-gradient(180deg, #0D1526 0%, #080C14 100%) !important; border-right: 1px solid #1C2A3A; }
 [data-testid="stSidebar"] * { color: #C8D3E0 !important; }
 #MainMenu, footer, header { visibility: hidden; }
 [data-testid="metric-container"] { background: linear-gradient(135deg, #0F1B2D 0%, #0A1520 100%); border: 1px solid #1C2A3A; border-radius: 12px; padding: 16px 20px; }
-[data-testid="stMetricValue"] { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 1.3rem !important; color: #E8EDF5 !important; }
+[data-testid="stMetricValue"] { font-weight: 700; font-size: 1.1rem !important; color: #E8EDF5 !important; }
 [data-testid="stMetricLabel"] { color: #6B7C93 !important; font-size: 0.75rem !important; text-transform: uppercase; letter-spacing: 1px; }
-.stButton > button { background: linear-gradient(135deg, #0066FF, #0044CC); color: white !important; border: none; border-radius: 8px; font-family: 'Sora', sans-serif; font-weight: 600; }
-.stButton > button:hover { background: linear-gradient(135deg, #0077FF, #0055DD); transform: translateY(-1px); }
-.stTextArea textarea { background: #0D1526 !important; border: 1px solid #1C2A3A !important; border-radius: 10px !important; color: #E8EDF5 !important; font-family: 'Sora', sans-serif !important; }
+.stButton > button { background: linear-gradient(135deg, #0066FF, #0044CC); color: white !important; border: none; border-radius: 8px; font-weight: 600; }
+.stTextArea textarea { background: #0D1526 !important; border: 1px solid #1C2A3A !important; border-radius: 10px !important; color: #E8EDF5 !important; }
 hr { border-color: #1C2A3A !important; }
 </style>
 """, unsafe_allow_html=True)
 
+
+# ── Model Training on Startup ──────────────────────────────────────────────────
+def ensure_model_exists():
+    """Train model if artifacts don't exist."""
+    if PIPELINE_PATH.exists() and LE_PATH.exists():
+        return True
+
+    st.info("🔧 First run: Training the model... This takes about 30 seconds.")
+    progress = st.progress(0)
+    status = st.empty()
+
+    try:
+        status.text("📊 Generating training dataset...")
+        progress.progress(10)
+        result = subprocess.run(
+            [sys.executable, "data/generate_dataset.py"],
+            capture_output=True, text=True, timeout=120
+        )
+        if result.returncode != 0:
+            st.error(f"Dataset generation failed: {result.stderr}")
+            return False
+
+        progress.progress(40)
+        status.text("🤖 Training TF-IDF + Logistic Regression model...")
+
+        result = subprocess.run(
+            [sys.executable, "ml/training/train_baseline.py"],
+            capture_output=True, text=True, timeout=300
+        )
+        if result.returncode != 0:
+            st.error(f"Training failed: {result.stderr}")
+            return False
+
+        progress.progress(100)
+        status.text("✅ Model trained successfully!")
+        time.sleep(1)
+        progress.empty()
+        status.empty()
+        st.success("Model ready! Reloading...")
+        st.rerun()
+        return True
+
+    except subprocess.TimeoutExpired:
+        st.error("Training timed out. Please refresh the page.")
+        return False
+    except Exception as e:
+        st.error(f"Error: {e}")
+        return False
+
+
 # ── Load Model ─────────────────────────────────────────────────────────────────
 @st.cache_resource
 def load_model():
-    model_dir = Path("ml/saved_models/baseline")
-    with open(model_dir / "pipeline.pkl", "rb") as f:
+    if not PIPELINE_PATH.exists():
+        return None, None
+    with open(PIPELINE_PATH, "rb") as f:
         pipeline = pickle.load(f)
-    with open(model_dir / "label_encoder.pkl", "rb") as f:
+    with open(LE_PATH, "rb") as f:
         le = pickle.load(f)
     return pipeline, le
 
+
 @st.cache_resource
 def get_cleaner():
+    from ml.preprocessing.text_cleaner import TextCleaner
     return TextCleaner(remove_stopwords=False, lemmatize=True)
 
+
 # ── Predict ────────────────────────────────────────────────────────────────────
-def predict(text: str) -> Dict:
+def predict(text: str) -> Optional[Dict]:
     pipeline, le = load_model()
+    if pipeline is None:
+        return None
+
+    from ml.preprocessing.text_cleaner import extract_keywords
     cleaner = get_cleaner()
     start = time.time()
     cleaned = cleaner.clean(text)
@@ -116,8 +173,11 @@ def predict(text: str) -> Dict:
     classes = le.classes_
     ranked = sorted(zip(classes, probs), key=lambda x: x[1], reverse=True)
     primary_intent, primary_conf = ranked[0]
-    meta = INTENT_METADATA.get(primary_intent, {"department": "General Support", "priority": "low", "label": primary_intent})
+    meta = INTENT_METADATA.get(primary_intent, {
+        "department": "General Support", "priority": "low", "label": primary_intent
+    })
     elapsed_ms = (time.time() - start) * 1000
+
     return {
         "primary_intent": {
             "intent": primary_intent,
@@ -136,11 +196,13 @@ def predict(text: str) -> Dict:
         "processing_time_ms": round(elapsed_ms, 2),
     }
 
+
 # ── Session State ──────────────────────────────────────────────────────────────
 if "ticket_history" not in st.session_state:
     st.session_state.ticket_history: List[Dict] = []
 if "last_prediction" not in st.session_state:
     st.session_state.last_prediction = None
+
 
 def add_to_history(text: str, prediction: Dict):
     ticket_num = len(st.session_state.ticket_history) + 1001
@@ -157,14 +219,19 @@ def add_to_history(text: str, prediction: Dict):
     }
     st.session_state.ticket_history.insert(0, ticket)
 
+
+# ── Check model exists, train if not ──────────────────────────────────────────
+if not PIPELINE_PATH.exists():
+    model_ok = ensure_model_exists()
+    if not model_ok:
+        st.stop()
+
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
     <div style="padding:8px 0 16px 0;">
-        <div style="font-family:Sora,sans-serif;font-size:1.1rem;font-weight:800;color:#E8EDF5;">
-        🎯 CustomerIntent</div>
-        <div style="font-size:0.7rem;color:#4A6080;font-family:JetBrains Mono,monospace;">
-        v1.0.0 · AI Ticket Router</div>
+        <div style="font-size:1.1rem;font-weight:800;color:#E8EDF5;">🎯 CustomerIntent</div>
+        <div style="font-size:0.7rem;color:#4A6080;">v1.0.0 · AI Ticket Router</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -199,10 +266,10 @@ with st.sidebar:
 if "Live Classifier" in page:
     st.markdown("""
     <div style="padding:8px 0 24px 0;">
-        <h1 style="font-family:Sora,sans-serif;font-size:2rem;font-weight:800;
-        color:#E8EDF5;margin:0;letter-spacing:-1px;">Live Intent Classifier</h1>
+        <h1 style="font-size:2rem;font-weight:800;color:#E8EDF5;margin:0;letter-spacing:-1px;">
+        Live Intent Classifier</h1>
         <p style="color:#4A6080;font-size:0.88rem;margin:6px 0 0 0;">
-        Type a customer message and get instant intent classification with department routing
+        Real-time customer support intent classification and smart ticket routing
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -217,14 +284,18 @@ if "Live Classifier" in page:
             key="main_input",
             label_visibility="collapsed",
         )
-        classify_btn = st.button("🎯  Classify Intent", type="primary", use_container_width=False)
+        classify_btn = st.button("🎯  Classify Intent", type="primary")
 
     with right_col:
         st.markdown("""<div style="font-size:0.75rem;font-weight:600;color:#4A6080;
         text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
         Quick Examples</div>""", unsafe_allow_html=True)
         for ex in EXAMPLE_MESSAGES:
-            if st.button(f"{ex[:45]}{'...' if len(ex)>45 else ''}", key=f"ex_{hash(ex)}", use_container_width=True):
+            if st.button(
+                f"{ex[:45]}{'...' if len(ex)>45 else ''}",
+                key=f"ex_{hash(ex)}",
+                use_container_width=True
+            ):
                 st.session_state["main_input"] = ex
                 st.rerun()
 
@@ -234,8 +305,9 @@ if "Live Classifier" in page:
         else:
             with st.spinner("Analyzing..."):
                 prediction = predict(user_input)
-            st.session_state.last_prediction = prediction
-            add_to_history(user_input, prediction)
+            if prediction:
+                st.session_state.last_prediction = prediction
+                add_to_history(user_input, prediction)
 
     if st.session_state.last_prediction:
         pred = st.session_state.last_prediction
@@ -280,9 +352,9 @@ if "Live Classifier" in page:
         with info_col:
             if pred.get("keywords"):
                 kw_html = "".join([
-                    f'<span style="display:inline-block;background:#0D1D33;border:1px solid #1C3A5A;'
-                    f'border-radius:5px;padding:4px 10px;margin:3px;font-size:12px;color:#7AADFF;'
-                    f'font-family:JetBrains Mono,monospace;">#{kw}</span>'
+                    f'<span style="display:inline-block;background:#0D1D33;'
+                    f'border:1px solid #1C3A5A;border-radius:5px;padding:4px 10px;'
+                    f'margin:3px;font-size:12px;color:#7AADFF;">#{kw}</span>'
                     for kw in pred["keywords"]
                 ])
                 st.markdown(kw_html, unsafe_allow_html=True)
@@ -295,18 +367,16 @@ if "Live Classifier" in page:
                 unsafe_allow_html=True,
             )
             st.markdown(
-                f'<p style="color:#2A4060;font-size:11px;margin-top:12px;'
-                f'font-family:JetBrains Mono,monospace;">'
-                f'⚡ {pred["processing_time_ms"]}ms</p>',
+                f'<p style="color:#2A4060;font-size:11px;margin-top:12px;">'
+                f'⚡ {pred["processing_time_ms"]}ms · {pred["model_used"]}</p>',
                 unsafe_allow_html=True,
             )
 
 # ── PAGE 2: Analytics ──────────────────────────────────────────────────────────
 elif "Analytics" in page:
     st.markdown("""
-    <h1 style="font-family:Sora,sans-serif;font-size:2rem;font-weight:800;
-    color:#E8EDF5;margin:0 0 24px 0;letter-spacing:-1px;">Analytics Dashboard</h1>
-    """, unsafe_allow_html=True)
+    <h1 style="font-size:2rem;font-weight:800;color:#E8EDF5;margin:0 0 24px 0;">
+    Analytics Dashboard</h1>""", unsafe_allow_html=True)
 
     history = st.session_state.ticket_history
     if not history:
@@ -334,10 +404,15 @@ elif "Analytics" in page:
                 names=list(intent_counts.keys()),
                 values=list(intent_counts.values()),
                 title="Intent Distribution",
-                color_discrete_sequence=["#0066FF","#0044AA","#0088FF","#00AAFF","#0033CC","#3377FF","#005599","#0099DD","#002299"],
+                color_discrete_sequence=["#0066FF","#0044AA","#0088FF","#00AAFF",
+                                          "#0033CC","#3377FF","#005599","#0099DD","#002299"],
                 hole=0.45,
             )
-            fig_pie.update_layout(paper_bgcolor="rgba(0,0,0,0)", font=dict(color="#6B7C93"), height=300, margin=dict(l=0,r=0,t=30,b=10))
+            fig_pie.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#6B7C93"),
+                height=300, margin=dict(l=0,r=0,t=30,b=10)
+            )
             st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
 
         with c2:
@@ -347,14 +422,13 @@ elif "Analytics" in page:
                     prio_counts[t["priority"]] += 1
             fig_bar = go.Figure(go.Bar(
                 x=list(prio_counts.keys()), y=list(prio_counts.values()),
-                marker=dict(color=[PRIORITY_COLORS[p] for p in prio_counts.keys()], line=dict(width=0)),
+                marker=dict(color=[PRIORITY_COLORS[p] for p in prio_counts.keys()]),
                 text=list(prio_counts.values()), textposition="outside",
             ))
             fig_bar.update_layout(
                 title="Priority Breakdown",
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="#6B7C93"), height=300,
-                margin=dict(l=0,r=0,t=30,b=10),
                 xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False),
             )
             st.plotly_chart(fig_bar, use_container_width=True, config={"displayModeBar": False})
@@ -362,9 +436,8 @@ elif "Analytics" in page:
 # ── PAGE 3: Ticket History ─────────────────────────────────────────────────────
 elif "Ticket History" in page:
     st.markdown("""
-    <h1 style="font-family:Sora,sans-serif;font-size:2rem;font-weight:800;
-    color:#E8EDF5;margin:0 0 24px 0;letter-spacing:-1px;">Ticket History</h1>
-    """, unsafe_allow_html=True)
+    <h1 style="font-size:2rem;font-weight:800;color:#E8EDF5;margin:0 0 24px 0;">
+    Ticket History</h1>""", unsafe_allow_html=True)
 
     history = st.session_state.ticket_history
     if not history:
@@ -378,25 +451,24 @@ elif "Ticket History" in page:
             st.markdown(f"""
             <div style="background:#0D1526;border-left:3px solid {pcolor};
             border-radius:0 10px 10px 0;padding:14px 18px;margin:8px 0;
-            border-top:1px solid #1C2A3A;border-right:1px solid #1C2A3A;border-bottom:1px solid #1C2A3A;">
+            border-top:1px solid #1C2A3A;border-right:1px solid #1C2A3A;
+            border-bottom:1px solid #1C2A3A;">
                 <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-                    <span style="font-family:JetBrains Mono,monospace;font-size:12px;color:#0066FF;font-weight:600;">
+                    <span style="font-size:12px;color:#0066FF;font-weight:600;">
                     {ticket['id']}</span>
-                    <span style="color:#2A4060;font-size:11px;font-family:JetBrains Mono,monospace;">
+                    <span style="color:#2A4060;font-size:11px;">
                     {ticket['date']} · {ticket['timestamp']}</span>
                 </div>
-                <div style="color:#C8D3E0;font-size:0.9rem;margin:6px 0 10px 0;">{ticket['text']}</div>
+                <div style="color:#C8D3E0;font-size:0.9rem;margin:6px 0 10px 0;">
+                {ticket['text']}</div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                     <span style="background:#0D1D33;border:1px solid #1C3A5A;color:#7AADFF;
                     border-radius:5px;padding:3px 10px;font-size:11px;font-weight:600;">
                     {emoji_i} {ticket['display_label']}</span>
-                    <span style="background:#0A1A0A;border:1px solid #1A3A1A;color:#34C759;
-                    border-radius:5px;padding:3px 10px;font-size:11px;font-weight:600;">
-                    🏢 {ticket['department']}</span>
-                    <span style="background:{pcolor}15;border:1px solid {pcolor}40;color:{pcolor};
-                    border-radius:5px;padding:3px 10px;font-size:11px;font-weight:700;">
-                    {emoji_p} {priority.upper()}</span>
-                    <span style="color:#2A4060;font-size:11px;font-family:JetBrains Mono,monospace;">
+                    <span style="background:{pcolor}15;border:1px solid {pcolor}40;
+                    color:{pcolor};border-radius:5px;padding:3px 10px;font-size:11px;
+                    font-weight:700;">{emoji_p} {priority.upper()}</span>
+                    <span style="color:#2A4060;font-size:11px;">
                     {ticket['confidence']*100:.1f}% conf</span>
                 </div>
             </div>
