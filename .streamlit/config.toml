@@ -1,6 +1,22 @@
 [server]
 headless = true
 port = 7860
+address = "0.0.0.0"
+enableCORS = false
+enableXsrfProtection = false
+maxUploadSize = 50
 
 [browser]
 gatherUsageStats = false
+serverAddress = "0.0.0.0"
+serverPort = 7860
+
+[runner]
+fastReruns = true
+
+[theme]
+base = "dark"
+backgroundColor = "#080C14"
+secondaryBackgroundColor = "#0D1526"
+textColor = "#E8EDF5"
+primaryColor = "#0066FF"
