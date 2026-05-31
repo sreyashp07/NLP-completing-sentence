@@ -16,7 +16,7 @@ class PredictionRequest(BaseModel):
         min_length=3,
         max_length=512,
         description="Customer support message to classify",
-        examples=["My payment failed but money got deducted"],
+        examples=["My payment failed but money got deducted from my account."],
     )
     model_type: Optional[str] = Field(
         default="baseline",
