@@ -20,8 +20,12 @@ RUN python -c "import nltk; nltk.download('punkt', download_dir='/code/nltk_data
 
 COPY . .
 
-RUN chmod -R 777 /code
+RUN chmod -R 777 /code && chmod +x docker-startup.sh
+
+# Pre-train the model at build time
+RUN python data/generate_dataset.py && \
+    python ml/training/train_baseline.py
 
 EXPOSE 7860
 
-CMD ["streamlit", "run", "app_hf.py", "--server.port=7860", "--server.address=0.0.0.0", "--server.headless=true", "--server.enableCORS=false", "--server.enableXsrfProtection=false"]
+CMD ["./docker-startup.sh"]
