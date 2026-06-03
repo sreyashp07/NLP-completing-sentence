@@ -1,5 +1,9 @@
 FROM python:3.11-slim
 
+LABEL maintainer="sreyashp07"
+LABEL project="CustomerIntent AI"
+LABEL version="1.0.0"
+
 WORKDIR /code
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -20,12 +24,11 @@ RUN python -c "import nltk; nltk.download('punkt', download_dir='/code/nltk_data
 
 COPY . .
 
-RUN chmod -R 777 /code && chmod +x docker-startup.sh
+RUN chmod -R 777 /code
 
-# Pre-train the model at build time
 RUN python data/generate_dataset.py && \
     python ml/training/train_baseline.py
 
 EXPOSE 7860
 
-CMD ["./docker-startup.sh"]
+CMD ["streamlit", "run", "app_hf.py", "--server.port=7860", "--server.address=0.0.0.0", "--server.headless=true", "--server.enableCORS=false", "--server.enableXsrfProtection=false"]
